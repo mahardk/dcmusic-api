@@ -1,17 +1,19 @@
 import autoBind from 'auto-bind';
-import SongsValidator from '../../validations/songs/index.js';
 
 class SongsHandler {
-  constructor(service) {
+  constructor(service, validator) {
     this._service = service;
+    this._validator = validator;
+
     autoBind(this);
   }
 
-  // POST /songs
   async postSongHandler(request, h) {
-    SongsValidator.validateSongPayload(request.payload);
+    this._validator.validateSongPayload(request.payload);
 
-    const { title, year, genre, performer, duration, albumId } = request.payload;
+    const {
+      title, year, genre, performer, duration, albumId,
+    } = request.payload;
 
     const songId = await this._service.addSong({
       title,
@@ -22,22 +24,18 @@ class SongsHandler {
       albumId,
     });
 
-    return h
-      .response({
-        status: 'success',
-        data: { songId },
-      })
-      .code(201);
+    const response = h.response({
+      status: 'success',
+      data: { songId },
+    });
+    response.code(201);
+    return response;
   }
 
-  // GET /songs
   async getSongsHandler(request) {
     const { title, performer } = request.query;
 
-    const songs = await this._service.getSongs({
-      title,
-      performer,
-    });
+    const songs = await this._service.getSongs({ title, performer });
 
     return {
       status: 'success',
@@ -45,20 +43,10 @@ class SongsHandler {
     };
   }
 
-  // GET /songs/{id}
-  async getSongByIdHandler(request, h) {
+  async getSongByIdHandler(request) {
     const { id } = request.params;
 
     const song = await this._service.getSongById(id);
-
-    if (!song) {
-      return h
-        .response({
-          status: 'fail',
-          message: 'Lagu tidak ditemukan',
-        })
-        .code(404);
-    }
 
     return {
       status: 'success',
@@ -66,15 +54,15 @@ class SongsHandler {
     };
   }
 
-  // PUT /songs/{id}
-  async putSongByIdHandler(request, h) {
+  async putSongByIdHandler(request) {
+    this._validator.validateSongPayload(request.payload);
+
     const { id } = request.params;
+    const {
+      title, year, genre, performer, duration, albumId,
+    } = request.payload;
 
-    SongsValidator.validateSongPayload(request.payload);
-
-    const { title, year, genre, performer, duration, albumId } = request.payload;
-
-    const success = await this._service.editSongById(id, {
+    await this._service.editSongById(id, {
       title,
       year,
       genre,
@@ -83,35 +71,16 @@ class SongsHandler {
       albumId,
     });
 
-    if (!success) {
-      return h
-        .response({
-          status: 'fail',
-          message: 'Gagal memperbarui lagu. Id tidak ditemukan',
-        })
-        .code(404);
-    }
-
     return {
       status: 'success',
       message: 'Lagu berhasil diperbarui',
     };
   }
 
-  // DELETE /songs/{id}
-  async deleteSongByIdHandler(request, h) {
+  async deleteSongByIdHandler(request) {
     const { id } = request.params;
 
-    const success = await this._service.deleteSongById(id);
-
-    if (!success) {
-      return h
-        .response({
-          status: 'fail',
-          message: 'Lagu gagal dihapus. Id tidak ditemukan',
-        })
-        .code(404);
-    }
+    await this._service.deleteSongById(id);
 
     return {
       status: 'success',

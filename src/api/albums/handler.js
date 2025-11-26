@@ -1,41 +1,32 @@
 import autoBind from 'auto-bind';
-import AlbumsValidator from '../../validations/albums/index.js';
 
 class AlbumsHandler {
-  constructor(service) {
+  constructor(service, validator) {
     this._service = service;
+    this._validator = validator;
+
     autoBind(this);
   }
 
-  // POST /albums
   async postAlbumHandler(request, h) {
-    AlbumsValidator.validateAlbumPayload(request.payload);
+    this._validator.validateAlbumPayload(request.payload);
 
     const { name, year } = request.payload;
+
     const albumId = await this._service.addAlbum({ name, year });
 
-    return h
-      .response({
-        status: 'success',
-        data: { albumId },
-      })
-      .code(201);
+    const response = h.response({
+      status: 'success',
+      data: { albumId },
+    });
+    response.code(201);
+    return response;
   }
 
-  // GET /albums/{id}
-  async getAlbumByIdHandler(request, h) {
+  async getAlbumByIdHandler(request) {
     const { id } = request.params;
 
     const album = await this._service.getAlbumById(id);
-
-    if (!album) {
-      return h
-        .response({
-          status: 'fail',
-          message: 'Album tidak ditemukan',
-        })
-        .code(404);
-    }
 
     return {
       status: 'success',
@@ -43,23 +34,13 @@ class AlbumsHandler {
     };
   }
 
-  // PUT /albums/{id}
-  async putAlbumByIdHandler(request, h) {
+  async putAlbumByIdHandler(request) {
+    this._validator.validateAlbumPayload(request.payload);
+
     const { id } = request.params;
-
-    AlbumsValidator.validateAlbumPayload(request.payload);
-
     const { name, year } = request.payload;
-    const success = await this._service.editAlbumById(id, { name, year });
 
-    if (!success) {
-      return h
-        .response({
-          status: 'fail',
-          message: 'Gagal memperbarui album. Id tidak ditemukan',
-        })
-        .code(404);
-    }
+    await this._service.editAlbumById(id, { name, year });
 
     return {
       status: 'success',
@@ -67,20 +48,10 @@ class AlbumsHandler {
     };
   }
 
-  // DELETE /albums/{id}
-  async deleteAlbumByIdHandler(request, h) {
+  async deleteAlbumByIdHandler(request) {
     const { id } = request.params;
 
-    const success = await this._service.deleteAlbumById(id);
-
-    if (!success) {
-      return h
-        .response({
-          status: 'fail',
-          message: 'Album gagal dihapus. Id tidak ditemukan',
-        })
-        .code(404);
-    }
+    await this._service.deleteAlbumById(id);
 
     return {
       status: 'success',

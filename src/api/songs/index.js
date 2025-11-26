@@ -3,9 +3,8 @@ import SongsHandler from './handler.js';
 
 const songs = {
   name: 'songs',
-  version: '1.0.0',
-  register: (server, { service }) => {
-    const handler = new SongsHandler(service);
+  register: (server, { service, validator }) => {
+    const handler = new SongsHandler(service, validator);
     server.route(routes(handler));
   },
 };

@@ -3,9 +3,8 @@ import AlbumsHandler from './handler.js';
 
 const albums = {
   name: 'albums',
-  version: '1.0.0',
-  register: (server, { service }) => {
-    const handler = new AlbumsHandler(service);
+  register: (server, { service, validator }) => {
+    const handler = new AlbumsHandler(service, validator);
     server.route(routes(handler));
   },
 };
