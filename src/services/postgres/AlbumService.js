@@ -1,21 +1,16 @@
 import pkg from 'pg';
 import { nanoid } from 'nanoid';
+import ClientError from '../../exceptions/ClientError.js';
 
 const { Pool } = pkg;
 
 class AlbumService {
   constructor() {
-    this._pool = new Pool({
-      host: process.env.PGHOST,
-      port: process.env.PGPORT,
-      database: process.env.PGDATABASE,
-      user: process.env.PGUSER,
-      password: process.env.PGPASSWORD,
-    });
+    this._pool = new Pool();
   }
 
   async addAlbum({ name, year }) {
-    const id = `album-${nanoid(10)}`;
+    const id = `album-${nanoid(16)}`;
 
     const query = {
       text: 'INSERT INTO albums (id, name, year) VALUES ($1, $2, $3) RETURNING id',
@@ -23,6 +18,11 @@ class AlbumService {
     };
 
     const result = await this._pool.query(query);
+
+    if (!result.rowCount) {
+      throw new ClientError('Gagal menambahkan album', 400);
+    }
+
     return result.rows[0].id;
   }
 
@@ -35,17 +35,14 @@ class AlbumService {
     const albumResult = await this._pool.query(albumQuery);
 
     if (!albumResult.rowCount) {
-      return null;
+      throw new ClientError('Album tidak ditemukan', 404);
     }
 
     const album = albumResult.rows[0];
 
+    // opsional: sertakan daftar lagu di album
     const songsQuery = {
-      text: `
-        SELECT id, title, performer
-        FROM songs
-        WHERE album_id = $1
-      `,
+      text: 'SELECT id, title, performer FROM songs WHERE album_id = $1',
       values: [id],
     };
 
@@ -64,7 +61,10 @@ class AlbumService {
     };
 
     const result = await this._pool.query(query);
-    return result.rowCount > 0;
+
+    if (!result.rowCount) {
+      throw new ClientError('Gagal memperbarui album. Id tidak ditemukan', 404);
+    }
   }
 
   async deleteAlbumById(id) {
@@ -74,7 +74,10 @@ class AlbumService {
     };
 
     const result = await this._pool.query(query);
-    return result.rowCount > 0;
+
+    if (!result.rowCount) {
+      throw new ClientError('Album gagal dihapus. Id tidak ditemukan', 404);
+    }
   }
 }
 
